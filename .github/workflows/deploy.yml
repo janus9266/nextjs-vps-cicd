@@ -12,6 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
 
+    env:
+      HOST: ${{ vars.PROD_HOST }}
+      USERNAME: ${{ vars.PROD_USERNAME }}
+      PORT: ${{ vars.PROD_PORT }}
+      DEPLOY_PATH: ${{ vars.PROD_DEPLOY_PATH }}
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -30,12 +36,12 @@ jobs:
     - name: Deploy to Production VPS
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ env.PROD_HOST }}
-        username: ${{ env.PROD_USERNAME }}
-        port: ${{ env.PROD_PORT }}
-        key: ${{ secrets.PROD_SSH_KEY }} # SSH keys still go in Secrets
+        host: ${{ env.HOST }}
+        username: ${{ env.USERNAME }}
+        port: ${{ env.PORT }}
+        key: ${{ secrets.PROD_SSH_KEY }}
         script: |
-          cd ${{ env.PROD_DEPLOY_PATH }}
+          cd ${{ env.DEPLOY_PATH }}
           git checkout main
           git pull origin main
           npm install

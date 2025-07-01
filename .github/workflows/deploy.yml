@@ -1,0 +1,84 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  deploy-prod:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Build project
+      run: npm run build
+
+    - name: Deploy to Production VPS
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ env.PROD_HOST }}
+        username: ${{ env.PROD_USERNAME }}
+        port: ${{ env.PROD_PORT }}
+        key: ${{ secrets.PROD_SSH_KEY }} # SSH keys still go in Secrets
+        script: |
+          cd ${{ env.PROD_DEPLOY_PATH }}
+          git pull origin main
+          npm install
+          npm run build
+          pm2 restart WebPhone-main || pm2 start npm --name "WebPhone-main" -- start
+          pm2 restart SmsServer-main || pm2 start sms-server.js --name "SmsServer-main"
+
+  deploy-dev:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    environment: dev
+
+    env:
+      HOST: ${{ vars.DEV_HOST }}
+      USERNAME: ${{ vars.DEV_USERNAME }}
+      PORT: ${{ vars.DEV_PORT }}
+      DEPLOY_PATH: ${{ vars.DEV_DEPLOY_PATH }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Build project
+      run: npm run build
+
+    - name: Deploy to Dev VPS
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ env.HOST }}
+        username: ${{ env.USERNAME }}
+        port: ${{ env.PORT }}
+        key: ${{ secrets.DEV_SSH_KEY }}
+        script: |
+          cd ${{ env.DEPLOY_PATH }}
+          git pull origin dev
+          npm install
+          npm run build
+          pm2 restart WebPhone-dev || pm2 start npm --name "WebPhone-dev" -- start
+          pm2 restart SmsServer-dev || pm2 start sms-server.js --name "SmsServer-dev"
